@@ -176,3 +176,25 @@ If local LAN access fails and `ngrok` is installed, it will print an `https://..
 - **Firewall prompt**: allow incoming connections for Node/Next if macOS asks.
 - **Database errors**: verify `.env` matches your MySQL/MariaDB connection.
 
+---
+
+## Deploy “live” from GitHub (recommended)
+
+GitHub Pages is static hosting and **cannot run** this app’s **Prisma database** and **`/api` routes**.
+
+Instead, this repo includes a GitHub Actions workflow that deploys to **Vercel** on every push to `main`:
+
+- Workflow: `.github/workflows/vercel-deploy.yml`
+
+### One-time setup (in your GitHub repo)
+
+1. Create a Vercel project linked to this GitHub repo.
+2. In GitHub repo → **Settings → Secrets and variables → Actions**, add:
+   - `VERCEL_TOKEN`
+   - `VERCEL_ORG_ID`
+   - `VERCEL_PROJECT_ID`
+3. In Vercel project settings, add environment variables (from `.env.example`):
+   - `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DATABASE_URL`
+
+After that, every `git push` to `main` will deploy and Vercel will give you a public URL.
+
