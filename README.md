@@ -178,23 +178,15 @@ If local LAN access fails and `ngrok` is installed, it will print an `https://..
 
 ---
 
-## Deploy “live” from GitHub (recommended)
+## Deploy “live” from GitHub
 
-GitHub Pages is static hosting and **cannot run** this app’s **Prisma database** and **`/api` routes**.
+This project is a full-stack Next.js app that uses **Prisma** and **API routes**, so it needs a backend runtime (not static GitHub Pages).
 
-Instead, this repo includes a GitHub Actions workflow that deploys to **Vercel** on every push to `main`:
+You can deploy it to any Next.js-compatible host (for example, Vercel, Netlify, or a custom Node server) by:
 
-- Workflow: `.github/workflows/vercel-deploy.yml`
+1. Pushing this repo to GitHub (already done).
+2. Creating a project on your chosen platform and linking this GitHub repo.
+3. Configuring the environment variables from `.env.example`.
 
-### One-time setup (in your GitHub repo)
-
-1. Create a Vercel project linked to this GitHub repo.
-2. In GitHub repo → **Settings → Secrets and variables → Actions**, add:
-   - `VERCEL_TOKEN`
-   - `VERCEL_ORG_ID`
-   - `VERCEL_PROJECT_ID`
-3. In Vercel project settings, add environment variables (from `.env.example`):
-   - `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DATABASE_URL`
-
-After that, every `git push` to `main` will deploy and Vercel will give you a public URL.
+Deployment steps depend on the platform you choose.
 
