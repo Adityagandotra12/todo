@@ -6,6 +6,9 @@
     "dev": "next dev",
     "dev:mobile": "node scripts/dev-mobile.js",
     "dev:live": "node scripts/dev-live.js",
+    "postinstall": "prisma generate",
+    "prisma:generate": "prisma generate",
+    "prebuild": "prisma generate",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
