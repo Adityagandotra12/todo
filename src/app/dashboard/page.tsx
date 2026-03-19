@@ -6,12 +6,28 @@ import type { Task } from "@/components/TaskItem";
 
 export default function DashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
-      const res = await fetch("/api/tasks");
-      const data = (await res.json()) as Task[];
-      setTasks(data);
+      try {
+        const res = await fetch("/api/tasks");
+
+        if (!res.ok) {
+          throw new Error("Failed to fetch tasks");
+        }
+
+        const data = (await res.json()) as unknown;
+        if (!Array.isArray(data)) {
+          throw new Error("Unexpected response from tasks API");
+        }
+
+        setTasks(data as Task[]);
+      } catch (e) {
+        console.error("Dashboard fetch error:", e);
+        setError("Could not load dashboard data.");
+        setTasks([]); // Avoid runtime crashes from non-array responses
+      }
     }
     load();
   }, []);
@@ -73,6 +89,7 @@ export default function DashboardPage() {
             </div>
           ))}
         </section>
+        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
       </main>
     </div>
   );
