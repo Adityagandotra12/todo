@@ -26,7 +26,6 @@ type Filter = "all" | "completed" | "pending" | "high";
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [usingBrowserStorage, setUsingBrowserStorage] = useState(false);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
 
@@ -52,7 +51,6 @@ export default function TasksPage() {
   useEffect(() => {
     function loadFromBrowser() {
       setTasks(loadBrowserTasks());
-      setUsingBrowserStorage(true);
       setError(null);
     }
 
@@ -149,7 +147,6 @@ export default function TasksPage() {
           replaceBrowserTasks(next);
           return next;
         });
-        setUsingBrowserStorage(true);
         return;
       }
       setError("Could not update task.");
@@ -184,7 +181,6 @@ export default function TasksPage() {
           replaceBrowserTasks(next);
           return next;
         });
-        setUsingBrowserStorage(true);
         return;
       }
       setError("Could not delete task.");
@@ -237,13 +233,6 @@ export default function TasksPage() {
             </div>
           </div>
         </header>
-
-        {usingBrowserStorage && (
-          <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
-            <span className="font-semibold">Browser storage:</span> tasks are
-            saved only on this device (database unavailable or offline mode).
-          </p>
-        )}
 
         <section className="space-y-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">

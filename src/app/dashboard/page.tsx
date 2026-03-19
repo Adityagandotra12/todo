@@ -19,13 +19,11 @@ import {
 export default function DashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [usingBrowserStorage, setUsingBrowserStorage] = useState(false);
 
   useEffect(() => {
     async function load() {
       if (browserTasksForcedByEnv() || browserTasksActive()) {
         setTasks(loadBrowserTasks());
-        setUsingBrowserStorage(true);
         setError(null);
         return;
       }
@@ -57,7 +55,6 @@ export default function DashboardPage() {
         if (isAbortError(e)) {
           enableBrowserTasksFallback();
           setTasks(loadBrowserTasks());
-          setUsingBrowserStorage(true);
           setError(null);
           return;
         }
@@ -65,7 +62,6 @@ export default function DashboardPage() {
         if (shouldFallbackToBrowserStorage(msg)) {
           enableBrowserTasksFallback();
           setTasks(loadBrowserTasks());
-          setUsingBrowserStorage(true);
           setError(null);
           return;
         }
@@ -132,12 +128,6 @@ export default function DashboardPage() {
             Overview of your tasks and priorities.
           </p>
         </header>
-        {usingBrowserStorage && (
-          <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
-            <span className="font-semibold">Browser storage:</span> counts
-            reflect tasks saved on this device only.
-          </p>
-        )}
         <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {cards.map((card) => (
             <div
