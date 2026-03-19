@@ -77,6 +77,12 @@ export function deleteBrowserTask(id: number): void {
   persistBrowserTasks(loadBrowserTasks().filter((t) => t.id !== id));
 }
 
+/** Replace all browser tasks (e.g. seed from React state after API timeout). */
+export function replaceBrowserTasks(tasks: Task[]): void {
+  if (typeof window === "undefined") return;
+  persistBrowserTasks(tasks);
+}
+
 /** Use DB error responses / messages to decide automatic browser fallback. */
 export function shouldFallbackToBrowserStorage(message: string): boolean {
   return /pool timeout|ECONNREFUSED|ETIMEDOUT|getaddrinfo|ENOTFOUND|connect timed out|failed to retrieve a connection from pool/i.test(

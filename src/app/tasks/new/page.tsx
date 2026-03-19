@@ -11,6 +11,10 @@ import {
   enableBrowserTasksFallback,
   shouldFallbackToBrowserStorage,
 } from "@/lib/browser-tasks";
+import {
+  fetchWithTimeout,
+  MUTATION_TIMEOUT_MS,
+} from "@/lib/fetch-with-timeout";
 
 export default function NewTaskPage() {
   const router = useRouter();
@@ -30,11 +34,15 @@ export default function NewTaskPage() {
         return;
       }
 
-      const res = await fetch("/api/tasks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
-      });
+      const res = await fetchWithTimeout(
+        "/api/tasks",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(values),
+        },
+        MUTATION_TIMEOUT_MS,
+      );
 
       if (!res.ok) {
         let msg = "Failed to create task";

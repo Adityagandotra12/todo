@@ -10,9 +10,16 @@ import {
   deleteBrowserTask,
   enableBrowserTasksFallback,
   loadBrowserTasks,
+  replaceBrowserTasks,
   setBrowserTaskCompleted,
   shouldFallbackToBrowserStorage,
 } from "@/lib/browser-tasks";
+import {
+  fetchWithTimeout,
+  isAbortError,
+  MUTATION_TIMEOUT_MS,
+  QUERY_TIMEOUT_MS,
+} from "@/lib/fetch-with-timeout";
 
 type Filter = "all" | "completed" | "pending" | "high";
 
@@ -24,7 +31,7 @@ export default function TasksPage() {
   const [filter, setFilter] = useState<Filter>("all");
 
   async function fetchTasks() {
-    const res = await fetch("/api/tasks");
+    const res = await fetchWithTimeout("/api/tasks", {}, QUERY_TIMEOUT_MS);
     if (!res.ok) {
       let msg = "Failed to fetch tasks";
       try {
@@ -56,6 +63,11 @@ export default function TasksPage() {
 
     fetchTasks().catch((err) => {
       console.error(err);
+      if (isAbortError(err)) {
+        enableBrowserTasksFallback();
+        loadFromBrowser();
+        return;
+      }
       const msg = err instanceof Error ? err.message : String(err);
       if (
         shouldFallbackToBrowserStorage(msg) ||
@@ -109,14 +121,18 @@ export default function TasksPage() {
       return;
     }
     try {
-      const res = await fetch("/api/tasks", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: task.id,
-          completed: !task.completed,
-        }),
-      });
+      const res = await fetchWithTimeout(
+        "/api/tasks",
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: task.id,
+            completed: !task.completed,
+          }),
+        },
+        MUTATION_TIMEOUT_MS,
+      );
       if (!res.ok) throw new Error("Failed to update task");
       const updated = (await res.json()) as Task;
       setTasks((prev) =>
@@ -124,6 +140,18 @@ export default function TasksPage() {
       );
     } catch (err) {
       console.error(err);
+      if (isAbortError(err)) {
+        enableBrowserTasksFallback();
+        setTasks((prev) => {
+          const next = prev.map((t) =>
+            t.id === task.id ? { ...t, completed: !t.completed } : t,
+          );
+          replaceBrowserTasks(next);
+          return next;
+        });
+        setUsingBrowserStorage(true);
+        return;
+      }
       setError("Could not update task.");
     }
   }
@@ -136,15 +164,29 @@ export default function TasksPage() {
       return;
     }
     try {
-      const res = await fetch("/api/tasks", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
-      });
+      const res = await fetchWithTimeout(
+        "/api/tasks",
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id }),
+        },
+        MUTATION_TIMEOUT_MS,
+      );
       if (!res.ok) throw new Error("Failed to delete task");
       setTasks((prev) => prev.filter((t) => t.id !== id));
     } catch (err) {
       console.error(err);
+      if (isAbortError(err)) {
+        enableBrowserTasksFallback();
+        setTasks((prev) => {
+          const next = prev.filter((t) => t.id !== id);
+          replaceBrowserTasks(next);
+          return next;
+        });
+        setUsingBrowserStorage(true);
+        return;
+      }
       setError("Could not delete task.");
     }
   }

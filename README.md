@@ -160,6 +160,8 @@ You can also force this mode in production by setting in Vercel:
 
 - `NEXT_PUBLIC_USE_BROWSER_TASKS` = `true`
 
+API calls use a **short client timeout** (~1.2s for saves, ~2.2s for lists) so a stuck database does not block the UI for ~10 seconds; the app can fall back to browser storage when needed.
+
 ---
 
 ## Open on your phone (same Wi‑Fi)

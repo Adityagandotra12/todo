@@ -10,6 +10,11 @@ import {
   loadBrowserTasks,
   shouldFallbackToBrowserStorage,
 } from "@/lib/browser-tasks";
+import {
+  fetchWithTimeout,
+  isAbortError,
+  QUERY_TIMEOUT_MS,
+} from "@/lib/fetch-with-timeout";
 
 export default function DashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -25,7 +30,7 @@ export default function DashboardPage() {
         return;
       }
       try {
-        const res = await fetch("/api/tasks");
+        const res = await fetchWithTimeout("/api/tasks", {}, QUERY_TIMEOUT_MS);
 
         if (!res.ok) {
           let msg = "Failed to fetch tasks";
@@ -49,6 +54,13 @@ export default function DashboardPage() {
         setTasks(data as Task[]);
       } catch (e) {
         console.error("Dashboard fetch error:", e);
+        if (isAbortError(e)) {
+          enableBrowserTasksFallback();
+          setTasks(loadBrowserTasks());
+          setUsingBrowserStorage(true);
+          setError(null);
+          return;
+        }
         const msg = e instanceof Error ? e.message : String(e);
         if (shouldFallbackToBrowserStorage(msg)) {
           enableBrowserTasksFallback();
