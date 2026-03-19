@@ -152,6 +152,14 @@ Open in browser:
 
 - `http://localhost:3000`
 
+### Vercel without a reachable MySQL
+
+If the database is not available (e.g. pool timeout on Vercel), **Add Task** automatically falls back to **browser storage** so the app still works. Tasks are saved in `localStorage` for that browser only.
+
+You can also force this mode in production by setting in Vercel:
+
+- `NEXT_PUBLIC_USE_BROWSER_TASKS` = `true`
+
 ---
 
 ## Open on your phone (same Wi‑Fi)

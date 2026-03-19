@@ -4,27 +4,79 @@ import { useEffect, useMemo, useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { TaskList } from "@/components/TaskList";
 import type { Task } from "@/components/TaskItem";
+import {
+  browserTasksActive,
+  browserTasksForcedByEnv,
+  deleteBrowserTask,
+  enableBrowserTasksFallback,
+  loadBrowserTasks,
+  setBrowserTaskCompleted,
+  shouldFallbackToBrowserStorage,
+} from "@/lib/browser-tasks";
 
 type Filter = "all" | "completed" | "pending" | "high";
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [usingBrowserStorage, setUsingBrowserStorage] = useState(false);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
 
   async function fetchTasks() {
     const res = await fetch("/api/tasks");
-    if (!res.ok) throw new Error("Failed to fetch tasks");
+    if (!res.ok) {
+      let msg = "Failed to fetch tasks";
+      try {
+        const payload = (await res.json()) as {
+          error?: string;
+          message?: string;
+        };
+        msg = payload.message ?? payload.error ?? msg;
+      } catch {
+        msg = `HTTP ${res.status}`;
+      }
+      throw new Error(msg);
+    }
     const data = (await res.json()) as Task[];
     setTasks(data);
   }
 
   useEffect(() => {
+    function loadFromBrowser() {
+      setTasks(loadBrowserTasks());
+      setUsingBrowserStorage(true);
+      setError(null);
+    }
+
+    if (browserTasksForcedByEnv() || browserTasksActive()) {
+      loadFromBrowser();
+      return;
+    }
+
     fetchTasks().catch((err) => {
       console.error(err);
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        shouldFallbackToBrowserStorage(msg) ||
+        /Failed to fetch|NetworkError|Load failed/i.test(msg)
+      ) {
+        enableBrowserTasksFallback();
+        loadFromBrowser();
+        return;
+      }
       setError("Could not load tasks.");
     });
+  }, []);
+
+  useEffect(() => {
+    const onChange = () => {
+      if (browserTasksForcedByEnv() || browserTasksActive()) {
+        setTasks(loadBrowserTasks());
+      }
+    };
+    window.addEventListener("todo-tasks-changed", onChange);
+    return () => window.removeEventListener("todo-tasks-changed", onChange);
   }, []);
 
   const totalTasks = tasks.length;
@@ -49,6 +101,13 @@ export default function TasksPage() {
 
   async function handleToggleCompleted(task: Task) {
     setError(null);
+    if (browserTasksForcedByEnv() || browserTasksActive()) {
+      const updated = setBrowserTaskCompleted(task.id, !task.completed);
+      if (updated) {
+        setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+      }
+      return;
+    }
     try {
       const res = await fetch("/api/tasks", {
         method: "PUT",
@@ -71,6 +130,11 @@ export default function TasksPage() {
 
   async function handleDelete(id: number) {
     setError(null);
+    if (browserTasksForcedByEnv() || browserTasksActive()) {
+      deleteBrowserTask(id);
+      setTasks(loadBrowserTasks());
+      return;
+    }
     try {
       const res = await fetch("/api/tasks", {
         method: "DELETE",
@@ -131,6 +195,13 @@ export default function TasksPage() {
             </div>
           </div>
         </header>
+
+        {usingBrowserStorage && (
+          <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
+            <span className="font-semibold">Browser storage:</span> tasks are
+            saved only on this device (database unavailable or offline mode).
+          </p>
+        )}
 
         <section className="space-y-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">

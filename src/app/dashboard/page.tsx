@@ -3,18 +3,42 @@
 import { useEffect, useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import type { Task } from "@/components/TaskItem";
+import {
+  browserTasksActive,
+  browserTasksForcedByEnv,
+  enableBrowserTasksFallback,
+  loadBrowserTasks,
+  shouldFallbackToBrowserStorage,
+} from "@/lib/browser-tasks";
 
 export default function DashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [usingBrowserStorage, setUsingBrowserStorage] = useState(false);
 
   useEffect(() => {
     async function load() {
+      if (browserTasksForcedByEnv() || browserTasksActive()) {
+        setTasks(loadBrowserTasks());
+        setUsingBrowserStorage(true);
+        setError(null);
+        return;
+      }
       try {
         const res = await fetch("/api/tasks");
 
         if (!res.ok) {
-          throw new Error("Failed to fetch tasks");
+          let msg = "Failed to fetch tasks";
+          try {
+            const payload = (await res.json()) as {
+              error?: string;
+              message?: string;
+            };
+            msg = payload.message ?? payload.error ?? msg;
+          } catch {
+            msg = `HTTP ${res.status}`;
+          }
+          throw new Error(msg);
         }
 
         const data = (await res.json()) as unknown;
@@ -25,11 +49,29 @@ export default function DashboardPage() {
         setTasks(data as Task[]);
       } catch (e) {
         console.error("Dashboard fetch error:", e);
+        const msg = e instanceof Error ? e.message : String(e);
+        if (shouldFallbackToBrowserStorage(msg)) {
+          enableBrowserTasksFallback();
+          setTasks(loadBrowserTasks());
+          setUsingBrowserStorage(true);
+          setError(null);
+          return;
+        }
         setError("Could not load dashboard data.");
-        setTasks([]); // Avoid runtime crashes from non-array responses
+        setTasks([]);
       }
     }
     load();
+  }, []);
+
+  useEffect(() => {
+    const onChange = () => {
+      if (browserTasksForcedByEnv() || browserTasksActive()) {
+        setTasks(loadBrowserTasks());
+      }
+    };
+    window.addEventListener("todo-tasks-changed", onChange);
+    return () => window.removeEventListener("todo-tasks-changed", onChange);
   }, []);
 
   const total = tasks.length;
@@ -78,6 +120,12 @@ export default function DashboardPage() {
             Overview of your tasks and priorities.
           </p>
         </header>
+        {usingBrowserStorage && (
+          <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
+            <span className="font-semibold">Browser storage:</span> counts
+            reflect tasks saved on this device only.
+          </p>
+        )}
         <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {cards.map((card) => (
             <div

@@ -4,6 +4,13 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { TaskForm, type TaskFormValues } from "@/components/TaskForm";
+import {
+  addBrowserTask,
+  browserTasksActive,
+  browserTasksForcedByEnv,
+  enableBrowserTasksFallback,
+  shouldFallbackToBrowserStorage,
+} from "@/lib/browser-tasks";
 
 export default function NewTaskPage() {
   const router = useRouter();
@@ -15,6 +22,14 @@ export default function NewTaskPage() {
     setError(null);
 
     try {
+      // Optional: always use browser storage on Vercel when env is set
+      if (browserTasksForcedByEnv() || browserTasksActive()) {
+        addBrowserTask(values);
+        router.push("/tasks");
+        router.refresh();
+        return;
+      }
+
       const res = await fetch("/api/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -22,25 +37,47 @@ export default function NewTaskPage() {
       });
 
       if (!res.ok) {
-        // Try to surface the real server reason (e.g. missing DB env vars)
         let msg = "Failed to create task";
         try {
-          const payload = (await res.json()) as { error?: string; message?: string };
-          msg =
-            payload.message ??
-            payload.error ??
-            msg;
+          const payload = (await res.json()) as {
+            error?: string;
+            message?: string;
+          };
+          msg = payload.message ?? payload.error ?? msg;
         } catch {
           // ignore parse errors
         }
-        throw new Error(msg);
+
+        if (res.status === 400) {
+          setError(msg);
+          return;
+        }
+
+        // DB unreachable (e.g. pool timeout on Vercel + local MySQL) → save in browser
+        if (
+          res.status >= 500 ||
+          shouldFallbackToBrowserStorage(msg)
+        ) {
+          enableBrowserTasksFallback();
+          addBrowserTask(values);
+          router.push("/tasks");
+          router.refresh();
+          return;
+        }
+
+        setError(msg);
+        return;
       }
 
-      router.push("/");
+      router.push("/tasks");
       router.refresh();
     } catch (e) {
       console.error("Create task error:", e);
-      setError(e instanceof Error ? e.message : "Could not create task");
+      // Network error or timeout → browser fallback so Add Task still works
+      enableBrowserTasksFallback();
+      addBrowserTask(values);
+      router.push("/tasks");
+      router.refresh();
     } finally {
       setSubmitting(false);
     }
