@@ -190,3 +190,18 @@ You can deploy it to any Next.js-compatible host (for example, Vercel, Netlify, 
 
 Deployment steps depend on the platform you choose.
 
+### Vercel + MySQL only on your laptop
+
+**Vercel cannot open a TCP connection to MySQL that runs only on your PC.**  
+On your laptop, `localhost` is *your* machine. On Vercel, `localhost` is *their* server — there is no MySQL there, so Prisma waits until the pool **times out (~10s)**. That is not a bug in this repo; it’s how the internet works.
+
+If you **do not want a hosted/cloud database**, you can still ship the app in these ways:
+
+| Approach | Idea |
+|--------|------|
+| **Self-host Next.js** | Run `npm run build && npm start` (or Docker) on the **same machine** as MySQL, or on your home server. Use your LAN IP, Tailscale, or your own domain. No Vercel required for DB. |
+| **Tunnel only the API (advanced)** | Keep MySQL on the PC; run a TCP tunnel (e.g. ngrok TCP, Cloudflare Tunnel) so Vercel’s `DATABASE_URL` points at a **public hostname** that forwards to your MySQL. Your laptop + tunnel must stay on; not ideal for real users, and lock down access. |
+| **Demo without Vercel DB** | Use `npm run dev:mobile` / ngrok for **the Next app** so others hit your laptop; DB stays local. |
+
+There is **no code-only change** that makes Vercel magically use your private `localhost` MySQL without one of the above.
+
