@@ -2,13 +2,14 @@ import { PrismaClient } from "../generated/prisma/client";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 
 function getDbConfig() {
-  // Prefer explicit DB_* vars, but fall back to DATABASE_URL (common on Vercel).
+  // On Vercel it's most common to set only `DATABASE_URL`.
+  // If it's present, prefer it over DB_* (avoids using `localhost` accidentally).
   const databaseUrl = process.env.DATABASE_URL;
-  if (databaseUrl && (!process.env.DB_USER || !process.env.DB_PASSWORD)) {
+  if (databaseUrl) {
     const url = new URL(databaseUrl);
     const database = url.pathname.replace(/^\//, "");
     return {
-      host: process.env.DB_HOST ?? url.hostname,
+      host: url.hostname,
       user: url.username,
       password: url.password,
       database,
@@ -16,6 +17,7 @@ function getDbConfig() {
     };
   }
 
+  // Local dev fallback
   return {
     host: process.env.DB_HOST ?? "localhost",
     user: process.env.DB_USER ?? "",
