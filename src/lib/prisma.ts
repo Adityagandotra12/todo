@@ -1,42 +1,23 @@
 import { PrismaClient } from "../generated/prisma/client";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 
-function getDbConfig() {
-  // On Vercel it's most common to set only `DATABASE_URL`.
-  // If it's present, prefer it over DB_* (avoids using `localhost` accidentally).
-  const databaseUrl = process.env.DATABASE_URL;
-  if (databaseUrl) {
-    const url = new URL(databaseUrl);
-    const database = url.pathname.replace(/^\//, "");
-    return {
-      host: url.hostname,
-      user: url.username,
-      password: url.password,
-      database,
-      port: url.port ? Number(url.port) : 3306,
-    };
-  }
+const databaseUrl = process.env.DATABASE_URL;
 
-  // Local dev fallback
-  return {
-    host: process.env.DB_HOST ?? "localhost",
-    user: process.env.DB_USER ?? "",
-    password: process.env.DB_PASSWORD ?? "",
-    database: process.env.DB_NAME ?? "todo_db",
-    port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
-  };
-}
-
-const dbConfig = getDbConfig();
-
-const adapter = new PrismaMariaDb({
-  host: dbConfig.host,
-  user: dbConfig.user,
-  password: dbConfig.password,
-  database: dbConfig.database,
-  port: dbConfig.port,
-  connectionLimit: 5,
-});
+// IMPORTANT:
+// `@prisma/adapter-mariadb` accepts either:
+// - a PoolConfig object, OR
+// - a connection string.
+// Passing the connection string directly preserves SSL + query params.
+const adapter = databaseUrl
+  ? new PrismaMariaDb(databaseUrl)
+  : new PrismaMariaDb({
+      host: process.env.DB_HOST ?? "localhost",
+      user: process.env.DB_USER ?? "",
+      password: process.env.DB_PASSWORD ?? "",
+      database: process.env.DB_NAME ?? "todo_db",
+      port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
+      connectionLimit: 5,
+    });
 
 declare global {
   // eslint-disable-next-line no-var
