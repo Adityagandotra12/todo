@@ -78,8 +78,9 @@ export async function POST(request: Request) {
     return NextResponse.json(task, { status: 201 });
   } catch (error) {
     console.error("POST /api/tasks error", error);
+    const message = error instanceof Error ? error.message : "Unknown server error";
     return NextResponse.json(
-      { error: "Failed to create task" },
+      { error: "Failed to create task", message },
       { status: 500 },
     );
   }

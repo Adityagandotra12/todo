@@ -1,25 +1,49 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { TaskForm, type TaskFormValues } from "@/components/TaskForm";
 
 export default function NewTaskPage() {
   const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   async function handleCreate(values: TaskFormValues) {
-    const res = await fetch("/api/tasks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(values),
-    });
+    setSubmitting(true);
+    setError(null);
 
-    if (!res.ok) {
-      throw new Error("Failed to create task");
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      });
+
+      if (!res.ok) {
+        // Try to surface the real server reason (e.g. missing DB env vars)
+        let msg = "Failed to create task";
+        try {
+          const payload = (await res.json()) as { error?: string; message?: string };
+          msg =
+            payload.message ??
+            payload.error ??
+            msg;
+        } catch {
+          // ignore parse errors
+        }
+        throw new Error(msg);
+      }
+
+      router.push("/");
+      router.refresh();
+    } catch (e) {
+      console.error("Create task error:", e);
+      setError(e instanceof Error ? e.message : "Could not create task");
+    } finally {
+      setSubmitting(false);
     }
-
-    router.push("/");
-    router.refresh();
   }
 
   return (
@@ -38,8 +62,13 @@ export default function NewTaskPage() {
         </header>
 
         <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl shadow-zinc-200/50 backdrop-blur-sm dark:border-zinc-700 dark:bg-zinc-900/95 dark:shadow-none sm:p-4">
-          <TaskForm onSubmit={handleCreate} />
+          <TaskForm onSubmit={handleCreate} submitting={submitting} />
         </div>
+        {error && (
+          <p className="mt-3 text-sm text-red-600 dark:text-red-400" role="alert">
+            {error}
+          </p>
+        )}
       </main>
     </div>
   );
