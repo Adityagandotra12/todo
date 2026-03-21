@@ -75,8 +75,16 @@ export function Navbar() {
         <nav className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
           <Link
             href="/tasks/new"
-            className="min-h-[44px] min-w-[44px] flex items-center text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:min-h-0 sm:min-w-0 sm:text-base"
+            className="min-h-[44px] min-w-[44px] flex items-center gap-2 text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:min-h-0 sm:min-w-0 sm:text-base"
           >
+            <img
+              src="/logo.svg"
+              alt=""
+              width={32}
+              height={32}
+              className="h-8 w-8 shrink-0"
+              aria-hidden
+            />
             <span className="bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-amber-400 bg-clip-text text-transparent">
               Task Manager
             </span>
