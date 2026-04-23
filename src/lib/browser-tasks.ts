@@ -73,6 +73,20 @@ export function setBrowserTaskCompleted(id: number, completed: boolean): Task | 
   return updated;
 }
 
+export function updateBrowserTask(
+  id: number,
+  updates: Partial<Pick<Task, "title" | "description" | "priority" | "dueDate">>,
+): Task | null {
+  const tasks = loadBrowserTasks();
+  const i = tasks.findIndex((t) => t.id === id);
+  if (i === -1) return null;
+  const updated: Task = { ...tasks[i], ...updates };
+  const next = [...tasks];
+  next[i] = updated;
+  persistBrowserTasks(next);
+  return updated;
+}
+
 export function deleteBrowserTask(id: number): void {
   persistBrowserTasks(loadBrowserTasks().filter((t) => t.id !== id));
 }

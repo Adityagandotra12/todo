@@ -13,6 +13,7 @@ import {
   replaceBrowserTasks,
   setBrowserTaskCompleted,
   shouldFallbackToBrowserStorage,
+  updateBrowserTask,
 } from "@/lib/browser-tasks";
 import {
   fetchWithTimeout,
@@ -187,7 +188,78 @@ export default function TasksPage() {
     }
   }
 
-  function handleEdit() {}
+  async function handleEdit(task: Task) {
+    setError(null);
+
+    const title = window.prompt("Edit title", task.title)?.trim();
+    if (title === undefined) return;
+    if (!title) {
+      setError("Title cannot be empty.");
+      return;
+    }
+
+    const descriptionInput = window.prompt(
+      "Edit description (optional)",
+      task.description ?? "",
+    );
+    if (descriptionInput === null) return;
+    const description = descriptionInput.trim() || null;
+    const currentDueDate = task.dueDate
+      ? new Date(task.dueDate).toISOString().slice(0, 10)
+      : "";
+    const dueDateInput = window.prompt(
+      "Edit due date (YYYY-MM-DD). Leave empty to clear.",
+      currentDueDate,
+    );
+    if (dueDateInput === null) return;
+    const dueDateValue = dueDateInput.trim();
+    if (dueDateValue && !/^\d{4}-\d{2}-\d{2}$/.test(dueDateValue)) {
+      setError("Due date must be in YYYY-MM-DD format.");
+      return;
+    }
+    const dueDate = dueDateValue
+      ? new Date(`${dueDateValue}T12:00:00`).toISOString()
+      : null;
+
+    if (browserTasksForcedByEnv() || browserTasksActive()) {
+      const updated = updateBrowserTask(task.id, { title, description, dueDate });
+      if (updated) {
+        setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+      }
+      return;
+    }
+
+    try {
+      const res = await fetchWithTimeout(
+        "/api/tasks",
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: task.id,
+            title,
+            description: description ?? "",
+            dueDate: dueDateValue || null,
+          }),
+        },
+        MUTATION_TIMEOUT_MS,
+      );
+      if (!res.ok) throw new Error("Failed to update task");
+      const updated = (await res.json()) as Task;
+      setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+    } catch (err) {
+      console.error(err);
+      if (isAbortError(err)) {
+        enableBrowserTasksFallback();
+        const updated = updateBrowserTask(task.id, { title, description, dueDate });
+        if (updated) {
+          setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+        }
+        return;
+      }
+      setError("Could not update task.");
+    }
+  }
 
   return (
     <div className="min-h-screen font-sans text-zinc-900 dark:text-zinc-50">
